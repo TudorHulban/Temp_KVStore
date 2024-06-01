@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type KVStore[K comparable] struct {
@@ -16,7 +17,8 @@ type KVStore[K comparable] struct {
 	stores    []map[K]string
 	filePaths []string
 
-	encryptionWith []byte
+	encryptionWith    []byte
+	creationTimestamp time.Time
 }
 
 func NewKVStore[K comparable](dirPath string) (*KVStore[K], error) {
@@ -27,15 +29,23 @@ func NewKVStore[K comparable](dirPath string) (*KVStore[K], error) {
 	}
 
 	result := KVStore[K]{
-		dirPath:        dirPath,
-		stores:         make([]map[K]string, _numShards),
-		filePaths:      make([]string, _numShards),
-		encryptionWith: _key,
+		dirPath:           dirPath,
+		stores:            make([]map[K]string, _numShards),
+		filePaths:         make([]string, _numShards),
+		encryptionWith:    _key,
+		creationTimestamp: time.Now(),
 	}
 
 	for i := range _numShards {
 		result.stores[i] = make(map[K]string)
-		result.filePaths[i] = filepath.Join(dirPath, fmt.Sprintf("shard_%d.kv", i))
+		result.filePaths[i] = filepath.Join(
+			dirPath,
+			fmt.Sprintf(
+				"%d_shard_%d.kv",
+				result.creationTimestamp.Unix(),
+				i,
+			),
+		)
 
 		if err := result.loadFromFile(i); err != nil {
 			return nil, err
